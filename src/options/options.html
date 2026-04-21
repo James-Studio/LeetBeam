@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LeetBeam Settings</title>
+    <link rel="stylesheet" href="./options.css">
+  </head>
+  <body>
+    <main class="settings-shell">
+      <section class="settings-card">
+        <p class="eyebrow">Optional AI</p>
+        <h1>Coaching Settings</h1>
+        <p class="lead">Core tracking stays deterministic. AI is used only for narrative coaching and never for counts, streaks, or topic math.</p>
+        <p class="lead lead-subtle">If you enable OpenAI, the extension may send a compact analytics summary derived from your tracked LeetCode activity to OpenAI in order to generate narrative coaching.</p>
+        <form id="settings-form" class="settings-form">
+          <label class="field">
+            <span>Provider</span>
+            <select id="ai-provider">
+              <option value="stub">Disabled</option>
+              <option value="openai">OpenAI</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>OpenAI API Key</span>
+            <input id="openai-api-key" type="password" placeholder="sk-..." autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Model</span>
+            <input id="openai-model" type="text" value="gpt-5-mini" placeholder="gpt-5-mini">
+          </label>
+          <div class="actions">
+            <button type="submit" class="primary-button">Save settings</button>
+            <span id="save-status" class="save-status">Ready</span>
+          </div>
+        </form>
+      </section>
+    </main>
+    <script src="./options.js"></script>
+  </body>
+</html>

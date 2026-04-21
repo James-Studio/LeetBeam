@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "LeetBeam",
+  "description": "Track accepted LeetCode submissions locally, review recent progress, and get rule-based feedback.",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://leetcode.com/problems/*",
+    "https://leetcode.com/progress",
+    "https://leetcode.com/progress/",
+    "https://leetcode.com/progress/*",
+    "https://leetcode.com/submissions",
+    "https://leetcode.com/submissions/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "action": {
+    "default_title": "LeetBeam",
+    "default_popup": "src/popup/popup.html"
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "options_page": "src/options/options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.com/problems/*"
+      ],
+      "js": [
+        "src/lib/utils.js",
+        "src/lib/site-parser.js",
+        "src/content/content-script.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://leetcode.com/progress",
+        "https://leetcode.com/progress/",
+        "https://leetcode.com/progress/*",
+        "https://leetcode.com/submissions",
+        "https://leetcode.com/submissions/*"
+      ],
+      "js": [
+        "src/lib/utils.js",
+        "src/lib/history-parser.js",
+        "src/content/history-sync.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

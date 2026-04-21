@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LeetBeam</title>
+    <link rel="stylesheet" href="./popup.css">
+  </head>
+  <body>
+    <main class="popup-shell">
+      <section class="hero">
+        <p class="eyebrow">Local-first tracking</p>
+        <h1>LeetBeam</h1>
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span class="stat-label">Tracked solved</span>
+            <strong id="total-solved">0</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Current streak</span>
+            <strong id="current-streak">0</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-kicker">Sync</div>
+        <div class="sync-toolbar">
+          <button id="resync-button" type="button" class="action-button">Resync from progress page</button>
+          <button id="open-history-button" type="button" class="ghost-button">Open progress page</button>
+          <button id="open-settings-button" type="button" class="ghost-button">AI settings</button>
+        </div>
+        <p class="helper-copy">Reads today’s accepted rows from your open LeetCode progress page, with submissions as a fallback.</p>
+        <p class="helper-copy helper-copy-subtle">Optional AI coaching sends only a compact analytics summary after you explicitly enable it and add your own API key.</p>
+        <div class="sync-meta-row">
+          <span id="sync-status" class="sync-status">Ready</span>
+          <span id="sync-timestamp" class="panel-meta">No history sync yet</span>
+        </div>
+        <div class="danger-row">
+          <button id="clear-imported-button" type="button" class="text-button">Clear imported history</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <button type="button" class="panel-toggle" data-target="day-review">
+          <span class="panel-title-wrap">
+            <span class="section-kicker">Review</span>
+            <h2>Daily review</h2>
+            <span id="focus-day" class="panel-meta">No tracked day</span>
+          </span>
+          <span class="toggle-indicator" data-indicator="day-review">Show</span>
+        </button>
+        <div id="day-review" class="coach-grid collapsible-content is-collapsed">
+          <p class="empty-state">Your daily review will appear after tracked Accepted submissions.</p>
+        </div>
+        <div class="panel-footer">
+          <button id="generate-day-ai-button" type="button" class="ghost-button small-button">Generate AI daily coaching</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <button type="button" class="panel-toggle" data-target="interview-coach">
+          <span class="panel-title-wrap">
+            <span class="section-kicker">Coach</span>
+            <h2>Interview coach</h2>
+            <span class="panel-meta">Big-tech focused</span>
+          </span>
+          <span class="toggle-indicator" data-indicator="interview-coach">Show</span>
+        </button>
+        <div id="interview-coach" class="coach-grid collapsible-content is-collapsed">
+          <p class="empty-state">More targeted suggestions will appear as you build a submission history.</p>
+        </div>
+        <div class="panel-footer">
+          <button id="generate-interview-ai-button" type="button" class="ghost-button small-button">Generate AI interview coaching</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <button type="button" class="panel-toggle" data-target="recent-list">
+          <span class="panel-title-wrap">
+            <span class="section-kicker">Archive</span>
+            <h2>Recent accepted</h2>
+            <span id="recent-count" class="panel-meta">0 submissions</span>
+          </span>
+          <span class="toggle-indicator" data-indicator="recent-list">Show</span>
+        </button>
+        <div id="recent-list" class="recent-list collapsible-content is-collapsed">
+          <p class="empty-state">Solve a LeetCode problem and get an Accepted result to start tracking progress here.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="../lib/utils.js"></script>
+    <script src="./popup.js"></script>
+  </body>
+</html>
