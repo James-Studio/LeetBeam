@@ -49,6 +49,7 @@
     return {
       version: 1,
       submissions: [],
+      activeTimer: null,
       feedbackBySubmissionId: {},
       aggregates: {
         totalSolved: 0,
@@ -238,6 +239,9 @@
           language: submission.language || "Unknown",
           acceptedAt: submission.acceptedAt,
           acceptedDay: submission.acceptedDay,
+          durationMs: Number.isFinite(submission.durationMs) ? submission.durationMs : null,
+          timerStartedAt: submission.timerStartedAt || null,
+          timerStoppedAt: submission.timerStoppedAt || null,
           feedback: state.feedbackBySubmissionId[submission.id] || [],
           codeCaptured: Boolean(submission.code),
           detectedFrom: submission.detectedFrom || "content-script"
@@ -249,6 +253,7 @@
       aggregates: state.aggregates,
       insights,
       recentAccepted,
+      activeTimer: state.activeTimer,
       sync: state.sync,
       settings: sanitizeSettings(state.settings)
     };
@@ -278,6 +283,36 @@
     };
     await saveState(state);
     return state.aiCoaching;
+  }
+
+  async function getActiveTimer() {
+    const state = await getState();
+    return state.activeTimer || null;
+  }
+
+  async function startTimer(payload) {
+    const state = await getState();
+    const startedAt = payload && payload.startedAt ? new Date(payload.startedAt).toISOString() : new Date().toISOString();
+
+    state.activeTimer = {
+      slug: payload && payload.slug ? payload.slug : "unknown-problem",
+      title: payload && payload.title ? payload.title : "Unknown Problem",
+      pageUrl: payload && payload.pageUrl ? payload.pageUrl : "",
+      startedAt,
+      source: payload && payload.source ? payload.source : "manual",
+      tabId: payload && typeof payload.tabId === "number" ? payload.tabId : null
+    };
+
+    await saveState(state);
+    return state.activeTimer;
+  }
+
+  async function clearActiveTimer() {
+    const state = await getState();
+    const previous = state.activeTimer || null;
+    state.activeTimer = null;
+    await saveState(state);
+    return previous;
   }
 
   function buildInsights(state, orderedSubmissions) {
@@ -321,7 +356,15 @@
       tagCounts,
       feedbackSummary
     );
-    const analytics = buildAnalyticsPayload(state, focusDay, daySubmissions, tagCounts, dayReview, interviewReadiness, feedbackSummary);
+    const analytics = buildAnalyticsPayload(
+      state,
+      focusDay,
+      daySubmissions,
+      tagCounts,
+      dayReview,
+      interviewReadiness,
+      feedbackSummary
+    );
 
     return {
       focusDay,
@@ -348,6 +391,10 @@
       return difficulty === "medium" || difficulty === "hard";
     }).length;
     const languages = utils.unique(daySubmissions.map((submission) => submission.language).filter(Boolean));
+    const timedSubmissions = daySubmissions.filter((submission) => Number.isFinite(submission.durationMs) && submission.durationMs > 0);
+    const averageDurationMs = timedSubmissions.length
+      ? Math.round(timedSubmissions.reduce((sum, submission) => sum + submission.durationMs, 0) / timedSubmissions.length)
+      : null;
     const topicSnapshot = Object.entries(dayTagCounts)
       .sort((left, right) => right[1] - left[1])
       .slice(0, 4)
@@ -372,6 +419,10 @@
       strengths.push("You touched multiple topic areas in the same day, which is great for breadth.");
     }
 
+    if (averageDurationMs !== null && averageDurationMs <= 25 * 60 * 1000) {
+      strengths.push("Your recorded solve times were pretty efficient, which is a good sign for interview pacing.");
+    }
+
     if (dayFeedbackSummary.warningCount >= 2) {
       weaknesses.push("Several submissions triggered readability or structure warnings, so slow down for a quick refactor pass after you get Accepted.");
     }
@@ -386,6 +437,10 @@
 
     if (!daySubmissions.some((submission) => submission.code)) {
       weaknesses.push("Code capture was unavailable for this day, so the coaching is based mostly on metadata.");
+    }
+
+    if (averageDurationMs !== null && averageDurationMs >= 50 * 60 * 1000) {
+      weaknesses.push("Your recorded solve times ran long, which may signal that pattern recognition or debugging speed still needs reps.");
     }
 
     if (mediumHardCount < solvedCount) {
@@ -408,6 +463,8 @@
       summary: buildDaySummary(solvedCount, mediumHardCount, topicSnapshot),
       solvedCount,
       mediumHardCount,
+      averageDurationMs,
+      timedSubmissionCount: timedSubmissions.length,
       topicSnapshot,
       strengths,
       weaknesses,
@@ -545,10 +602,20 @@
       .slice(0, 12)
       .map(([tag, count]) => ({ tag, count }));
 
+    const timedAllSubmissions = state.submissions.filter((submission) => Number.isFinite(submission.durationMs) && submission.durationMs > 0);
+    const timedDaySubmissions = daySubmissions.filter((submission) => Number.isFinite(submission.durationMs) && submission.durationMs > 0);
     const dayFacts = {
       focusDay,
       solvedCount: dayReview.solvedCount,
       mediumHardCount: dayReview.mediumHardCount,
+      timedSubmissionCount: timedDaySubmissions.length,
+      averageSolveMinutes: dayReview.averageDurationMs ? Math.round(dayReview.averageDurationMs / 60000) : null,
+      solveTimes: timedDaySubmissions.map((submission) => ({
+        slug: submission.slug,
+        title: submission.title,
+        minutes: Math.round(submission.durationMs / 60000),
+        difficulty: normalizeDifficulty(submission.difficulty)
+      })),
       difficultyBreakdown: todayDifficulty,
       topicSnapshot: todayTopics,
       languages: utils.unique(daySubmissions.map((submission) => submission.language).filter(Boolean)),
@@ -559,6 +626,16 @@
     const interviewFacts = {
       totalSolved: state.aggregates.totalSolved,
       currentStreak: state.aggregates.currentStreak,
+      timedSubmissionCount: timedAllSubmissions.length,
+      averageSolveMinutes: timedAllSubmissions.length
+        ? Math.round(timedAllSubmissions.reduce((sum, submission) => sum + submission.durationMs, 0) / timedAllSubmissions.length / 60000)
+        : null,
+      fastestSolveMinutes: timedAllSubmissions.length
+        ? Math.round(Math.min(...timedAllSubmissions.map((submission) => submission.durationMs)) / 60000)
+        : null,
+      slowestSolveMinutes: timedAllSubmissions.length
+        ? Math.round(Math.max(...timedAllSubmissions.map((submission) => submission.durationMs)) / 60000)
+        : null,
       totalDifficulty,
       topicCoverage: allTopics,
       warningSignals: Object.keys(feedbackSummary.ids),
@@ -665,6 +742,9 @@
     target.codeUnavailableReason = target.codeUnavailableReason || source.codeUnavailableReason;
     target.detectedFrom = target.detectedFrom || source.detectedFrom;
     target.externalKey = target.externalKey || source.externalKey || null;
+    target.durationMs = Number.isFinite(target.durationMs) ? target.durationMs : source.durationMs;
+    target.timerStartedAt = target.timerStartedAt || source.timerStartedAt || null;
+    target.timerStoppedAt = target.timerStoppedAt || source.timerStoppedAt || null;
   }
 
   global.LeetTrackerStorage = {
@@ -673,11 +753,14 @@
     getPopupData,
     getState,
     getSettings,
+    getActiveTimer,
     importHistorySubmissions,
     initialize,
     saveState,
     saveSettings,
     saveAICoaching,
+    startTimer,
+    clearActiveTimer,
     clearImportedHistory,
     deleteSubmission,
     storeAcceptedSubmission

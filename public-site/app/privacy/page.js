@@ -27,17 +27,17 @@ export default function PrivacyPage() {
     >
       <p>Last updated: April 21, 2026</p>
       <p>
-        LeetBeam is a local-first Chrome extension that tracks accepted LeetCode submissions, syncs visible progress history, and optionally generates narrative coaching.
+        LeetBeam is a local-first Chrome extension that tracks accepted LeetCode submissions, can record solve timing on supported problem pages, syncs visible progress history, and optionally generates narrative coaching.
       </p>
 
       <h2>What the extension reads</h2>
       <p>
-        LeetBeam may read visible LeetCode page content required for user-facing features, including problem metadata, accepted status, submission history rows, and code visible in the editor DOM when available.
+        LeetBeam may read visible LeetCode page content required for user-facing features, including problem metadata, accepted status, timer-related page state, submission history rows, and code visible in the editor DOM when available.
       </p>
 
       <h2>How data is used</h2>
       <p>
-        The extension uses this information to track progress locally, compute deterministic analytics such as streaks and topic coverage, generate rule-based feedback, and optionally generate AI coaching.
+        The extension uses this information to track progress locally, compute deterministic analytics such as streaks, topic coverage, and recorded solve times, generate rule-based feedback, and optionally generate AI coaching.
       </p>
 
       <h2>Where data is stored</h2>

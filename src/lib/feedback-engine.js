@@ -20,6 +20,7 @@
     addNestingFeedback(lines, feedback);
     addFunctionLengthFeedback(code, feedback);
     addEdgeCaseFeedback(submission, code, feedback);
+    addTimingFeedback(submission, feedback);
 
     if (!feedback.length) {
       feedback.push({
@@ -150,6 +151,29 @@
         message: "Hard problems often hide edge-case or complexity traps. A quick pass on time and space tradeoffs may be valuable."
       });
     }
+  }
+
+  function addTimingFeedback(submission, feedback) {
+    if (!Number.isFinite(submission.durationMs) || submission.durationMs <= 0) {
+      return;
+    }
+
+    const totalMinutes = Math.round(submission.durationMs / 60000);
+    const friendlyDuration = totalMinutes <= 1 ? "about 1 minute" : `${totalMinutes} minutes`;
+    let message = `LeetBeam recorded a solve time of ${friendlyDuration} for this accepted run.`;
+
+    if (totalMinutes >= 60) {
+      message += " That usually means the problem is worth a deliberate post-solve review so the pattern becomes faster next time.";
+    } else if (totalMinutes <= 15) {
+      message += " That is a strong pace for interview-style reps.";
+    }
+
+    feedback.push({
+      id: "solve-time",
+      severity: totalMinutes <= 15 ? "positive" : "info",
+      title: "Solve time recorded",
+      message
+    });
   }
 
   global.LeetTrackerFeedbackEngine = {

@@ -36,7 +36,9 @@
   function createOpenAIProvider() {
     return {
       name: "openai",
-      analyzeSubmission,
+      analyzeSubmission(submission, settings) {
+        return analyzeSubmissionWithOpenAI(submission, settings);
+      },
       generateDailyReview(facts, settings) {
         return generateCoachingJSON("daily", facts, settings);
       },
@@ -46,11 +48,42 @@
     };
   }
 
+  async function analyzeSubmissionWithOpenAI(submission, settings) {
+    if (!settings || !settings.openaiApiKey) {
+      return [];
+    }
+
+    const result = await requestJSON(
+      buildSubmissionInstructions(),
+      {
+        title: submission.title,
+        slug: submission.slug,
+        difficulty: submission.difficulty,
+        language: submission.language,
+        tags: submission.tags || [],
+        durationMinutes: Number.isFinite(submission.durationMs) ? Math.round(submission.durationMs / 60000) : null,
+        durationSeconds: Number.isFinite(submission.durationMs) ? Math.round(submission.durationMs / 1000) : null,
+        timerStartedAt: submission.timerStartedAt || null,
+        timerStoppedAt: submission.timerStoppedAt || null,
+        acceptedAt: submission.acceptedAt,
+        code: submission.code || null,
+        codeUnavailableReason: submission.codeUnavailableReason || null
+      },
+      settings
+    );
+
+    return normalizeFeedback(result && result.feedback);
+  }
+
   async function generateCoachingJSON(mode, facts, settings) {
     if (!settings || !settings.openaiApiKey) {
       throw new Error("Add an OpenAI API key in settings first.");
     }
 
+    return requestJSON(buildInstructions(mode), facts, settings);
+  }
+
+  async function requestJSON(instructions, facts, settings) {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -62,7 +95,7 @@
         input: [
           {
             role: "developer",
-            content: buildInstructions(mode)
+            content: instructions
           },
           {
             role: "user",
@@ -81,11 +114,26 @@
     return parseJSONOutput(extractOutputText(result));
   }
 
+  function buildSubmissionInstructions() {
+    return [
+      "You are reviewing one accepted LeetCode submission using only the supplied submission facts.",
+      "Use solve duration if it is present, but do not assume timing exists.",
+      "Do not claim the solution is incorrect because it was accepted.",
+      "Return strict JSON with key feedback.",
+      "feedback must be an array of 0 to 3 objects.",
+      "Each object must have keys id, severity, title, message.",
+      "severity must be one of info, warning, positive.",
+      "Keep each message short, concrete, and grounded in the supplied code or solve-time context.",
+      "If timing is present, you may comment on pacing or debugging efficiency without sounding judgmental."
+    ].join(" ");
+  }
+
   function buildInstructions(mode) {
     if (mode === "daily") {
       return [
         "You are coaching a LeetCode user using only supplied deterministic analytics.",
         "Do not invent counts, streaks, tags, or solve history.",
+        "Treat solve-time data as optional and only reference it when provided.",
         "Return strict JSON with keys: summary, strengths, weaknesses, suggestions.",
         "Each of strengths, weaknesses, suggestions must be an array of 2 to 4 short strings.",
         "summary must be one concise sentence."
@@ -95,6 +143,7 @@
     return [
       "You are coaching a user for big-tech software engineering interviews using only supplied deterministic analytics.",
       "Do not invent counts, streaks, or topic coverage.",
+      "Treat solve-time data as optional and only reference it when provided.",
       "Return strict JSON with keys: summary, strengths, weaknesses, suggestions.",
       "strengths and weaknesses must be arrays of 2 to 4 short strings.",
       "suggestions must be an array of 2 to 5 objects with keys title, reason, drills.",
@@ -135,6 +184,35 @@
       }
       throw new Error("OpenAI output was not valid JSON.");
     }
+  }
+
+  function normalizeFeedback(items) {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+
+    return items
+      .map((item, index) => {
+        const title = typeof item?.title === "string" ? item.title.trim() : "";
+        const message = typeof item?.message === "string" ? item.message.trim() : "";
+
+        if (!title || !message) {
+          return null;
+        }
+
+        return {
+          id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `ai-feedback-${index + 1}`,
+          severity: normalizeSeverity(item.severity),
+          title,
+          message
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+
+  function normalizeSeverity(value) {
+    return value === "positive" || value === "warning" || value === "info" ? value : "info";
   }
 
   global.LeetTrackerAIProvider = {

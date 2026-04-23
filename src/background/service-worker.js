@@ -51,6 +51,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "leetcode/getActiveTimer") {
+    LeetTrackerStorage.getActiveTimer()
+      .then((activeTimer) => sendResponse({ ok: true, activeTimer }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === "leetcode/startTimer") {
+    startTimerSession(message.payload || {}, sender)
+      .then((activeTimer) => sendResponse({ ok: true, activeTimer }))
+      .catch((error) => {
+        console.error("Failed to start timer", error);
+        sendResponse({ ok: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "leetcode/clearActiveTimer") {
+    LeetTrackerStorage.clearActiveTimer()
+      .then((previous) => sendResponse({ ok: true, previous }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message.type === "leetcode/importHistoryRows") {
     handleImportedHistoryRows(message.payload, sender)
       .then((result) => sendResponse(result))
@@ -150,6 +174,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleAcceptedSubmission(payload, sender) {
   await LeetTrackerStorage.initialize();
+  const timerResult = await stopTimerForAcceptedSubmission(payload, sender);
 
   const acceptedAt = payload.acceptedAt || new Date().toISOString();
   const acceptedDay = LeetTrackerUtils.isoDay(acceptedAt);
@@ -172,13 +197,31 @@ async function handleAcceptedSubmission(payload, sender) {
     acceptedAt,
     acceptedDay,
     detectedFrom: payload.detectedFrom || "content-script",
+    durationMs: timerResult ? timerResult.durationMs : null,
+    timerStartedAt: timerResult ? timerResult.startedAt : null,
+    timerStoppedAt: timerResult ? timerResult.stoppedAt : null,
     dedupeKey
   };
 
   const ruleFeedback = LeetTrackerFeedbackEngine.analyzeSubmission(submission);
   const state = await LeetTrackerStorage.getState();
   const provider = LeetTrackerAIProvider.getProvider(state.settings.aiProvider);
-  const aiFeedback = await provider.analyzeSubmission(submission);
+  let aiFeedback = [];
+
+  try {
+    aiFeedback = await provider.analyzeSubmission(submission, state.settings);
+  } catch (error) {
+    console.error("AI submission analysis failed", error);
+    aiFeedback = [
+      {
+        id: "ai-feedback-unavailable",
+        severity: "info",
+        title: "AI feedback unavailable",
+        message: "LeetBeam still saved this solve, but the optional AI feedback pass did not complete."
+      }
+    ];
+  }
+
   const combinedFeedback = ruleFeedback.concat(Array.isArray(aiFeedback) ? aiFeedback : []);
   const storageResult = await LeetTrackerStorage.storeAcceptedSubmission(submission, combinedFeedback);
 
@@ -186,8 +229,64 @@ async function handleAcceptedSubmission(payload, sender) {
     ok: true,
     stored: storageResult.stored,
     submissionId: storageResult.submissionId,
-    feedbackCount: combinedFeedback.length
+    feedbackCount: combinedFeedback.length,
+    timerStopped: Boolean(timerResult),
+    durationMs: timerResult ? timerResult.durationMs : null
   };
+}
+
+async function startTimerSession(payload, sender) {
+  await LeetTrackerStorage.initialize();
+  const pageUrl = payload.pageUrl || (sender.tab ? sender.tab.url : "") || "";
+  const title = payload.title || "Unknown Problem";
+  const parsedPath = safePathname(pageUrl);
+  const slug = payload.slug || LeetTrackerUtils.slugFromPath(parsedPath) || "unknown-problem";
+
+  return LeetTrackerStorage.startTimer({
+    slug,
+    title,
+    pageUrl,
+    startedAt: payload.startedAt,
+    source: payload.source || "manual",
+    tabId: sender.tab && typeof sender.tab.id === "number" ? sender.tab.id : null
+  });
+}
+
+async function stopTimerForAcceptedSubmission(payload, sender) {
+  const activeTimer = await LeetTrackerStorage.getActiveTimer();
+  if (!activeTimer) {
+    return null;
+  }
+
+  const senderUrl = sender.tab && sender.tab.url ? sender.tab.url : payload.pageUrl || "";
+  const senderSlug = senderUrl ? LeetTrackerUtils.slugFromPath(safePathname(senderUrl)) : null;
+  const payloadSlug = payload.slug || senderSlug;
+  const senderTabId = sender.tab && typeof sender.tab.id === "number" ? sender.tab.id : null;
+  const sameProblem = activeTimer.slug && payloadSlug && activeTimer.slug === payloadSlug;
+  const sameTabWithoutSlug = !payloadSlug && activeTimer.tabId !== null && senderTabId !== null && activeTimer.tabId === senderTabId;
+
+  if (!sameProblem && !sameTabWithoutSlug) {
+    return null;
+  }
+
+  const stoppedAt = payload.acceptedAt || new Date().toISOString();
+  const durationMs = Math.max(0, new Date(stoppedAt).getTime() - new Date(activeTimer.startedAt).getTime());
+
+  await LeetTrackerStorage.clearActiveTimer();
+
+  return {
+    ...activeTimer,
+    stoppedAt,
+    durationMs
+  };
+}
+
+function safePathname(url) {
+  try {
+    return new URL(url).pathname;
+  } catch (error) {
+    return "";
+  }
 }
 
 async function handleImportedHistoryRows(payload, sender) {

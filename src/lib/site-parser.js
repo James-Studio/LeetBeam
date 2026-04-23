@@ -180,8 +180,11 @@
 
   function findAcceptedSignal(documentRef) {
     const scopedSelectors = [
-      "[role='dialog']",
+      "[data-e2e-locator*='submission-result']",
+      "[data-e2e-locator*='console-result']",
+      "[data-e2e-locator*='result-panel']",
       "[data-e2e-locator*='result']",
+      "[role='dialog']",
       "[class*='result']",
       "[class*='submission']",
       "[data-e2e-locator*='submission']",
@@ -202,11 +205,18 @@
           continue;
         }
 
-        const accepted = /\b(Accepted|Success)\b/i.test(text);
+        const rejected =
+          /\b(Wrong Answer|Runtime Error|Compile Error|Time Limit Exceeded|Memory Limit Exceeded|Output Limit Exceeded|Presentation Error|Internal Error)\b/i.test(
+            text
+          );
+        const accepted =
+          /\bAccepted\b/i.test(text) ||
+          /All test cases passed/i.test(text) ||
+          /Accepted\s+Runtime/i.test(text);
         const submissionContext =
-          /\b(Runtime|Memory|Testcase|Test Case|Beats|Submitted|All test cases passed|Passed)\b/i.test(text);
+          /\b(Runtime|Memory|Testcase|Test Case|Beats|Submitted|Editorial|Code|Case 1|Case 2)\b/i.test(text);
 
-        if (accepted && submissionContext) {
+        if (!rejected && accepted && submissionContext) {
           return {
             source: selector,
             signature: utils.simpleHash(text.slice(0, 500))

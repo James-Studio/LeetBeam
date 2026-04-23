@@ -50,6 +50,36 @@
     });
   }
 
+  function formatDurationCompact(durationMs) {
+    const totalSeconds = Math.max(0, Math.round(Number(durationMs || 0) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+
+    if (minutes > 0) {
+      return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+    }
+
+    return `${seconds}s`;
+  }
+
+  function formatDurationClock(durationMs) {
+    const totalSeconds = Math.max(0, Math.floor(Number(durationMs || 0) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+    }
+
+    return [minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+  }
+
   function unique(values) {
     return Array.from(new Set(values));
   }
@@ -144,6 +174,8 @@
   global.LeetTrackerUtils = {
     computeCurrentStreak,
     createSubmissionId,
+    formatDurationClock,
+    formatDurationCompact,
     formatShortDate,
     isoDay,
     normalizeWhitespace,

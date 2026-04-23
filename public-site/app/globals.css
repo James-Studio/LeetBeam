@@ -245,6 +245,36 @@ h3 {
   align-items: center;
 }
 
+.hero-panel-showcase {
+  align-items: center;
+}
+
+.hero-screenshot-frame,
+.screenshot-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgba(86, 59, 42, 0.12);
+  background:
+    radial-gradient(circle at top right, rgba(198, 93, 66, 0.08), transparent 24%),
+    rgba(250, 244, 236, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 18px 48px rgba(87, 65, 42, 0.1);
+}
+
+.hero-screenshot-frame {
+  padding: 16px;
+}
+
+.hero-screenshot,
+.screenshot-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+}
+
 .mock-window {
   width: 100%;
   padding: 16px;
@@ -316,20 +346,33 @@ h3 {
 
 .mock-button,
 .mock-button-primary {
-  min-height: 52px;
+  min-height: 56px;
+  padding: 0 20px;
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
-  font-size: 22px;
+  font-size: 18px;
+  line-height: 1.15;
+  text-align: center;
   border: 1px solid var(--line);
 }
 
+.mock-button {
+  min-height: 46px;
+  font-size: 16px;
+  background: rgba(255, 252, 248, 0.9);
+  color: var(--ink);
+}
+
 .mock-button-primary {
-  color: #fffaf6;
+  color: #fff8f2;
   background: linear-gradient(180deg, #cf6d52 0%, var(--vermilion-deep) 100%);
   border-color: transparent;
+  text-shadow: 0 1px 2px rgba(82, 31, 19, 0.2);
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .mock-button-row {
@@ -337,10 +380,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-}
-
-.mock-button {
-  background: rgba(255, 252, 248, 0.9);
+  align-items: stretch;
 }
 
 .mock-note {
@@ -371,6 +411,10 @@ h3 {
   margin-top: 28px;
 }
 
+.feature-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .feature-card,
 .timeline-card,
 .trust-pill {
@@ -385,6 +429,32 @@ h3 {
   grid-template-columns: 0.95fr 1.05fr;
   gap: 28px;
   align-items: start;
+}
+
+.screenshot-stack {
+  display: grid;
+  gap: 28px;
+}
+
+.screenshot-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.screenshot-card {
+  display: grid;
+  grid-template-columns: 0.42fr 0.58fr;
+  gap: 22px;
+  align-items: center;
+  border-radius: 30px;
+  border: 1px solid var(--line);
+  background: rgba(255, 252, 247, 0.9);
+  padding: 24px;
+}
+
+.screenshot-copy p:last-child {
+  color: var(--muted);
+  margin-bottom: 0;
 }
 
 .timeline {
@@ -461,7 +531,9 @@ h3 {
   }
 
   .feature-grid,
-  .trust-grid {
+  .trust-grid,
+  .feature-grid-three,
+  .screenshot-card {
     grid-template-columns: 1fr;
   }
 }

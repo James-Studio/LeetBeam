@@ -64,7 +64,9 @@
 
       const subtitle = document.createElement("div");
       subtitle.className = "submission-subtitle";
-      subtitle.textContent = window.LeetTrackerUtils.formatShortDate(submission.acceptedAt);
+      subtitle.textContent = submission.durationMs
+        ? `${window.LeetTrackerUtils.formatShortDate(submission.acceptedAt)} • ${formatSolveDuration(submission.durationMs)}`
+        : window.LeetTrackerUtils.formatShortDate(submission.acceptedAt);
 
       titleWrap.appendChild(title);
       titleWrap.appendChild(subtitle);
@@ -515,5 +517,16 @@
     }
 
     return "Unknown";
+  }
+
+  function formatSolveDuration(durationMs) {
+    const totalMinutes = Math.max(1, Math.round(durationMs / 60000));
+    if (totalMinutes >= 60) {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+
+    return `${totalMinutes}m`;
   }
 })();
