@@ -1,6 +1,28 @@
 # LeetBeam
 
-A local-first Chrome Manifest V3 extension that watches LeetCode problem pages, captures Accepted submissions when possible, stores them in `chrome.storage.local`, and shows progress plus deterministic feedback in the popup. Optional AI coaching can be enabled separately for narrative summaries only.
+A local-first Chrome Manifest V3 extension that watches LeetCode problem pages, records solve timing, captures Accepted submissions when possible, stores everything in `chrome.storage.local`, and shows progress plus deterministic feedback in the popup. Optional AI coaching can be enabled separately for narrative summaries only.
+
+## Screenshots
+
+### Full Product Overview
+
+![LeetBeam full product overview](public-site/public/screenshots/home-composite.png)
+
+### Daily Review
+
+![LeetBeam daily review screen](public-site/public/screenshots/review-panel.png)
+
+### Progress Sync
+
+![LeetBeam sync screen](public-site/public/screenshots/sync-panel.png)
+
+### Dashboard
+
+![LeetBeam dashboard screen](public-site/public/screenshots/dashboard-panel.png)
+
+### Optional AI Settings
+
+![LeetBeam AI settings screen](public-site/public/screenshots/ai-settings-panel.png)
 
 ## File Tree
 
@@ -38,14 +60,16 @@ leetcode-progress-tracker-mvp/
 ### Content script
 
 - Runs on `https://leetcode.com/problems/*`.
+- Shows a floating LeetBeam timer on problem pages and lets users start timing real solves with less friction than LeetCode's built-in timer.
 - Watches page mutations and looks for a conservative Accepted signal in visible submission UI.
 - Extracts the current problem title, slug, difficulty, tags, language, and editor code when the page DOM exposes it.
+- Automatically stops the timer only when the submission result is actually Accepted.
 - Sends a single normalized submission payload to the background worker.
 
 ### Background service worker
 
 - Receives accepted-submission events from the content script.
-- Builds a submission record, dedupes near-identical accepted solutions, runs local rule-based feedback, optionally calls the AI provider interface for narrative coaching, and writes the result into local storage.
+- Builds a submission record, attaches solve duration when a timer was active, dedupes near-identical accepted solutions, runs local rule-based feedback, optionally calls the AI provider interface for narrative coaching, and writes the result into local storage.
 - Serves popup data through runtime messaging.
 
 ### Storage
@@ -53,6 +77,7 @@ leetcode-progress-tracker-mvp/
 - Uses a single local state object in `chrome.storage.local`.
 - Keeps:
   - `submissions`: accepted submission records
+  - `activeTimer`: current in-progress solve timer
   - `feedbackBySubmissionId`: latest feedback per stored submission
   - `aggregates`: total solved, streak, solved slugs, last accepted timestamp
   - `settings`: AI provider configuration and optional model settings
@@ -61,7 +86,7 @@ leetcode-progress-tracker-mvp/
 ### Popup
 
 - Reads precomputed local state from the background worker.
-- Shows total solved tracked by the extension, current streak, and recent accepted submissions with feedback cards.
+- Shows total solved tracked by the extension, current streak, and recent accepted submissions with feedback cards and recorded solve durations.
 - Still works with no AI provider configured because the rule-based engine and analytics always run locally.
 - Allows users to open AI settings and optionally generate AI daily/interview coaching after configuring their own OpenAI API key.
 
@@ -87,8 +112,9 @@ leetcode-progress-tracker-mvp/
 3. Click **Load unpacked**.
 4. Select the `leetcode-progress-tracker-mvp` folder.
 5. Open a LeetCode problem page such as `https://leetcode.com/problems/two-sum/`.
-6. Submit a solution until LeetCode shows an **Accepted** result.
-7. Open the extension popup to view tracked totals, streak, recent submissions, and local feedback.
+6. Start the floating timer when you begin solving.
+7. Submit a solution until LeetCode shows an **Accepted** result.
+8. Open the extension popup to view tracked totals, streak, recent submissions, solve time, and local feedback.
 
 ## Optional AI Coaching
 
@@ -130,7 +156,7 @@ You still need to host the privacy policy publicly before submission.
 ## Assumptions And Known Limitations
 
 - The extension relies on DOM extraction only. It does not call private or unsupported LeetCode APIs.
-- Accepted detection is intentionally conservative and tied to visible submission-result text such as `Accepted`, `Runtime`, or `Memory`. If LeetCode significantly changes its UI, selectors may need updating.
+- Accepted detection and timer auto-stop are tied to visible submission-result text. If LeetCode significantly changes its UI, selectors may need updating.
 - Monaco-based code extraction depends on editor text being present in the live DOM. Some editor states may expose only visible lines or no readable code at all.
 - Deduplication treats the same problem, language, and code hash as one stored accepted submission. Re-accepting identical code will usually not create a second record.
 - The streak is based on unique solve days tracked by this extension only, not the user’s full LeetCode history.
@@ -149,8 +175,8 @@ That script creates a clean zip in `dist/`.
 
 ## Next 5 Improvements
 
-1. Improve code capture reliability by supporting more editor states and post-submission pages.
-2. Show per-language and per-difficulty breakdowns in the popup.
-3. Add export and import for local history so tracked progress survives browser profile changes.
-4. Add stale/fresh timestamps for AI coaching snapshots and one-click regeneration for both AI sections.
+1. Add pause and resume plus idle-time handling for the solve timer.
+2. Track richer solve attempts such as run counts, failed submits, and hint usage.
+3. Show per-language, per-difficulty, and per-topic timing breakdowns in the popup.
+4. Add export and import for local history so tracked progress survives browser profile changes.
 5. Add a stronger production-grade secret handling approach for user-supplied model credentials.
